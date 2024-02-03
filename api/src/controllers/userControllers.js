@@ -1,34 +1,49 @@
 import Joi from "joi";
 import User from "../models/User.js";
+import redisClient from "../utils/redis.js";
 
 const createUser = async (req, res) => {
-    // Validate the incoming request body using Joi
     const schema = Joi.object({
         name: Joi.string().required(),
         email: Joi.string().email().required(),
-        age: Joi.number().integer().min(1).required(), //age must be less than equal to one
+        age: Joi.number().integer().min(1).required(),
     });
 
     const { error } = schema.validate(req.body);
     if (error) {
         return res.status(400).json({ error: error.details[0].message });
     }
-
     try {
         const user = new User(req.body);
         await user.save();
+        await redisClient.connect();
+        await redisClient.del("users"); // Invalidate users cache after a neq user is created
         res.status(201).json(user);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Error creating user" });
+    } finally {
+        await redisClient.quit();
     }
 };
 
 const getUsers = async (req, res) => {
     try {
+        await redisClient.connect();
+        const cachedUsers = await redisClient.get("users");
+        if (cachedUsers) {
+            console.log("From Cache");
+            const users = JSON.parse(cachedUsers);
+            return res.json(users);
+        }
+
         const users = await User.find();
+        await redisClient.set("users", JSON.stringify(users));
         res.json(users);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.log(error);
+        res.status(500).json({ error: "Error fetching users" });
+    } finally {
+        await redisClient.quit();
     }
 };
 
@@ -72,9 +87,13 @@ const updateUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
+        await redisClient.connect();
+        await redisClient.del("users"); // Invalidate users cache after a user is updated
         res.json(user);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    } finally {
+        await redisClient.quit();
     }
 };
 
@@ -93,9 +112,13 @@ const deleteUser = async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
+        await redisClient.connect();
+        await redisClient.del("users"); // Invalidate users cache after a user is deleted
         res.json({ message: "User deleted successfully" });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    } finally {
+        await redisClient.quit();
     }
 };
 
