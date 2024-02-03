@@ -31,7 +31,6 @@ const getUsers = async (req, res) => {
         await redisClient.connect();
         const cachedUsers = await redisClient.get("users");
         if (cachedUsers) {
-            console.log("From Cache");
             const users = JSON.parse(cachedUsers);
             return res.json(users);
         }
