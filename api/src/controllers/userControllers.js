@@ -57,13 +57,23 @@ const getUserById = async (req, res) => {
             return res.status(400).json({ error: error.details[0].message });
         }
 
+        await redisClient.connect();
+        const cachedUser = await redisClient.get(req.params.id);
+        if (cachedUser) {
+            const user = JSON.parse(cachedUser);
+            return res.json(user);
+        }
+
         const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ error: "User not found" });
         }
+        await redisClient.set(req.params.id, JSON.stringify(user));
         res.json(user);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    } finally {
+        await redisClient.quit();
     }
 };
 
