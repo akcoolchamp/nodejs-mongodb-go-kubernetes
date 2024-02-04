@@ -13,6 +13,7 @@
 4. Docker
 5. Dockerhub(to store images)
 6. Kubernetes
+7. Swagger
 
 ## Libraries/Packages used
 
