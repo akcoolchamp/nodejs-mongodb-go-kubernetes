@@ -1,6 +1,7 @@
 import Joi from "joi";
 import User from "../models/User.js";
 import redisClient from "../utils/redis.js";
+import { successMessages, errorMessages } from "../utils/messages.js";
 
 const createUser = async (req, res) => {
     const schema = Joi.object({
@@ -11,18 +12,18 @@ const createUser = async (req, res) => {
 
     const { error } = schema.validate(req.body);
     if (error) {
-        return res.status(400).json({ error: "Invalid user data" });
+        return res.status(400).json({ error: errorMessages.invalidUserData });
     }
     try {
-        //Check if user exists
+        // Check if user exists
         const existingUser = await User.findOne({ email: req.body.email });
         if (existingUser)
-            return res.status(401).json({ error: "User already exists" });
+            return res.status(401).json({ error: errorMessages.userExists });
         const user = new User(req.body);
         await user.save();
         res.status(201).json(user);
     } catch (error) {
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ error: errorMessages.serverError });
     }
 };
 
@@ -37,7 +38,7 @@ const getUserById = async (req, res) => {
 
         const { error } = schema.validate({ id: req.params.id });
         if (error) {
-            return res.status(400).json({ error: "Invalid id supplied" });
+            return res.status(400).json({ error: errorMessages.invalidId });
         }
 
         await redisClient.connect();
@@ -49,12 +50,12 @@ const getUserById = async (req, res) => {
 
         const user = await User.findById(req.params.id);
         if (!user) {
-            return res.status(404).json({ error: "User not found" });
+            return res.status(404).json({ error: errorMessages.userNotFound });
         }
         await redisClient.set(req.params.id, JSON.stringify(user));
         res.json(user);
     } catch (error) {
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ error: errorMessages.serverError });
     } finally {
         await redisClient.quit();
     }
@@ -69,7 +70,7 @@ const updateUser = async (req, res) => {
 
     const { error } = schema.validate(req.body);
     if (error) {
-        return res.status(400).json({ error: "Invalid user data" });
+        return res.status(400).json({ error: errorMessages.invalidUserData });
     }
 
     try {
@@ -77,13 +78,13 @@ const updateUser = async (req, res) => {
             new: true,
         });
         if (!user) {
-            return res.status(404).json({ error: "User not found" });
+            return res.status(404).json({ error: errorMessages.userNotFound });
         }
         await redisClient.connect();
         await redisClient.del(req.params.id); // Invalidate user's cache after a user is updated
-        res.json(user);
+        res.json({ message: successMessages.userUpdated, user });
     } catch (error) {
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ error: errorMessages.serverError });
     } finally {
         await redisClient.quit();
     }
@@ -99,18 +100,18 @@ const deleteUser = async (req, res) => {
 
         const { error } = schema.validate({ id: req.params.id });
         if (error) {
-            return res.status(400).json({ error: "Invalid ID supplied" });
+            return res.status(400).json({ error: errorMessages.invalidId });
         }
 
         const user = await User.findByIdAndDelete(req.params.id);
         if (!user) {
-            return res.status(404).json({ error: "User not found" });
+            return res.status(404).json({ error: errorMessages.userNotFound });
         }
         await redisClient.connect();
         await redisClient.del(req.params.id); // Invalidate user's cache after a user is deleted
-        res.json({ message: "User deleted successfully" });
+        res.json({ message: successMessages.userDeleted });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: errorMessages.serverError });
     } finally {
         await redisClient.quit();
     }
