@@ -24,19 +24,8 @@ paths:
             $ref: "#/definitions/User"
         400:
           description: "Invalid user data"
-        500:
-          description: "Internal server error"
-    get:
-      summary: "Get all users"
-      produces:
-        - "application/json"
-      responses:
-        200:
-          description: "List of users"
-          schema:
-            type: "array"
-            items:
-              $ref: "#/definitions/User"
+        401: 
+          description: "User already exists"
         500:
           description: "Internal server error"
   /users/{id}:

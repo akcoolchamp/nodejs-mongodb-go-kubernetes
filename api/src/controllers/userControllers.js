@@ -11,50 +11,33 @@ const createUser = async (req, res) => {
 
     const { error } = schema.validate(req.body);
     if (error) {
-        return res.status(400).json({ error: error.details[0].message });
+        return res.status(400).json({ error: "Invalid user data" });
     }
     try {
+        //Check if user exists
+        const existingUser = await User.findOne({ email: req.body.email });
+        if (existingUser)
+            return res.status(401).json({ error: "User already exists" });
         const user = new User(req.body);
         await user.save();
-        await redisClient.connect();
-        await redisClient.del("users"); // Invalidate users cache after a neq user is created
         res.status(201).json(user);
     } catch (error) {
-        res.status(500).json({ error: "Error creating user" });
-    } finally {
-        await redisClient.quit();
-    }
-};
-
-const getUsers = async (req, res) => {
-    try {
-        await redisClient.connect();
-        const cachedUsers = await redisClient.get("users");
-        if (cachedUsers) {
-            const users = JSON.parse(cachedUsers);
-            return res.json(users);
-        }
-
-        const users = await User.find();
-        await redisClient.set("users", JSON.stringify(users));
-        res.json(users);
-    } catch (error) {
-        console.log(error);
-        res.status(500).json({ error: "Error fetching users" });
-    } finally {
-        await redisClient.quit();
+        res.status(500).json({ error: "Internal server error" });
     }
 };
 
 const getUserById = async (req, res) => {
     try {
         const schema = Joi.object({
-            id: Joi.string().required(),
+            id: Joi.string()
+                .required()
+                .regex(/^[a-fA-F0-9]{24}$/)
+                .required(),
         });
 
         const { error } = schema.validate({ id: req.params.id });
         if (error) {
-            return res.status(400).json({ error: error.details[0].message });
+            return res.status(400).json({ error: "Invalid id supplied" });
         }
 
         await redisClient.connect();
@@ -71,7 +54,7 @@ const getUserById = async (req, res) => {
         await redisClient.set(req.params.id, JSON.stringify(user));
         res.json(user);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Internal server error" });
     } finally {
         await redisClient.quit();
     }
@@ -81,12 +64,12 @@ const updateUser = async (req, res) => {
     const schema = Joi.object({
         name: Joi.string(),
         email: Joi.string().email(),
-        age: Joi.number().integer().min(0),
+        age: Joi.number().integer().min(1),
     });
 
     const { error } = schema.validate(req.body);
     if (error) {
-        return res.status(400).json({ error: error.details[0].message });
+        return res.status(400).json({ error: "Invalid user data" });
     }
 
     try {
@@ -97,10 +80,10 @@ const updateUser = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
         await redisClient.connect();
-        await redisClient.del("users"); // Invalidate users cache after a user is updated
+        await redisClient.del(req.params.id); // Invalidate user's cache after a user is updated
         res.json(user);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: "Internal server error" });
     } finally {
         await redisClient.quit();
     }
@@ -109,12 +92,14 @@ const updateUser = async (req, res) => {
 const deleteUser = async (req, res) => {
     try {
         const schema = Joi.object({
-            id: Joi.string().required(),
+            id: Joi.string()
+                .required()
+                .regex(/^[a-fA-F0-9]{24}$/),
         });
 
         const { error } = schema.validate({ id: req.params.id });
         if (error) {
-            return res.status(400).json({ error: error.details[0].message });
+            return res.status(400).json({ error: "Invalid ID supplied" });
         }
 
         const user = await User.findByIdAndDelete(req.params.id);
@@ -122,7 +107,7 @@ const deleteUser = async (req, res) => {
             return res.status(404).json({ error: "User not found" });
         }
         await redisClient.connect();
-        await redisClient.del("users"); // Invalidate users cache after a user is deleted
+        await redisClient.del(req.params.id); // Invalidate user's cache after a user is deleted
         res.json({ message: "User deleted successfully" });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -131,4 +116,4 @@ const deleteUser = async (req, res) => {
     }
 };
 
-export { createUser, getUsers, getUserById, updateUser, deleteUser };
+export { createUser, getUserById, updateUser, deleteUser };
