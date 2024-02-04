@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import app from "./src/app.js";
+import redisClient from "./src/utils/redis.js";
 
 dotenv.config();
 
@@ -16,6 +17,8 @@ const connectToMongoDB = async () => {
 };
 
 connectToMongoDB();
+
+await redisClient.connect();
 
 app.get("/", (req, res) => {
     res.send("Server is running");
