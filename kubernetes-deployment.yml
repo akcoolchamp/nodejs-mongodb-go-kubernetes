@@ -1,55 +1,96 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+ name: my-app-namespace
+
+
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend-test-deployment
+ name: my-api-deployment
+ namespace: my-app-namespace
 spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: backend-test
-  template:
-    metadata:
-      labels:
-        app: backend-test
-    spec:
-      containers:
-      - name: backend-test
-        image: akshaylamkhade/backend-test:1.0
-        ports:
-        - containerPort: 3000
+ replicas: 3
+ selector:
+   matchLabels:
+     app: my-api
+ template:
+   metadata:
+     labels:
+       app: my-api
+   spec:
+     containers:
+       - name: nodejs-api
+         image: akshaylamkhade/api:latest
+         ports:
+           - containerPort: 3000
+         resources:
+           limits:
+             cpu: "1"
+           requests:
+             cpu: "0.5"
+
 
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+ name: my-go-worker-deployment
+ namespace: my-app-namespace
+spec:
+ replicas: 2
+ selector:
+   matchLabels:
+     app: my-go-worker
+ template:
+   metadata:
+     labels:
+       app: my-go-worker
+   spec:
+     containers:
+       - name: go-worker
+         image: akshaylamkhade/worker:latest
+         resources:
+           limits:
+             cpu: "1"
+           requests:
+             cpu: "0.5"
 
+
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend-test-service
+ name: my-api-service
+ namespace: my-app-namespace
 spec:
-  selector:
-    app: backend-test
-  ports:
-    - protocol: TCP
-      port: 80
-      targetPort: 3000
-  type: LoadBalancer
+ selector:
+   app: my-api
+ ports:
+   - protocol: TCP
+     port: 80
+     targetPort: 3000
+ type: LoadBalancer
+
 
 ---
-
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: backend-test-hpa
+ name: my-api-hpa
+ namespace: my-app-namespace
 spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: backend-test-deployment
-  minReplicas: 1
-  maxReplicas: 5
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 50 # Threshold for scaling up and down
+ scaleTargetRef:
+   apiVersion: apps/v1
+   kind: Deployment
+   name: my-api-deployment
+ minReplicas: 2
+ maxReplicas: 6
+ metrics:
+   - type: Resource
+     resource:
+       name: cpu
+       target:
+         type: Utilization
+         averageUtilization: 50
