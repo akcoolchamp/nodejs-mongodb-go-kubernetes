@@ -1,24 +1,24 @@
 apiVersion: v1
 kind: Namespace
 metadata:
- name: my-app-namespace
+ name: app-namespace
 
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
- name: my-api-deployment
- namespace: my-app-namespace
+ name: api-deployment
+ namespace: app-namespace
 spec:
  replicas: 3
  selector:
    matchLabels:
-     app: my-api
+     app: api
  template:
    metadata:
      labels:
-       app: my-api
+       app: api
    spec:
      containers:
        - name: nodejs-api
@@ -36,20 +36,20 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
- name: my-go-worker-deployment
- namespace: my-app-namespace
+ name: go-worker-deployment
+ namespace: app-namespace
 spec:
- replicas: 2
+ replicas: 1
  selector:
    matchLabels:
-     app: my-go-worker
+     app: go-worker
  template:
    metadata:
      labels:
-       app: my-go-worker
+       app: go-worker
    spec:
      containers:
-       - name: go-worker
+       - name: worker
          image: akshaylamkhade/worker:latest
          resources:
            limits:
@@ -62,11 +62,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
- name: my-api-service
- namespace: my-app-namespace
+ name: api-service
+ namespace: app-namespace
 spec:
  selector:
-   app: my-api
+   app: api
  ports:
    - protocol: TCP
      port: 80
@@ -78,13 +78,13 @@ spec:
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
- name: my-api-hpa
- namespace: my-app-namespace
+ name: api-hpa
+ namespace: app-namespace
 spec:
  scaleTargetRef:
    apiVersion: apps/v1
    kind: Deployment
-   name: my-api-deployment
+   name: api-deployment
  minReplicas: 2
  maxReplicas: 6
  metrics:

@@ -43,7 +43,7 @@ func main() {
 	fmt.Println("Connected to MongoDB")
 
 	// Start background worker using a range loop
-	ticker := time.NewTicker(1 * time.Second) // Adjust interval as needed
+	ticker := time.NewTicker(1 * time.Second) // Adjust interval as needed as of now it is 1 second
 	defer ticker.Stop()
 
 	for range ticker.C {
